@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My cards</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0C0A17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  @font-face {
+    font-family: "Unbounded"; src: url("unbounded.woff2") format("woff2");
+    font-weight: 200 900; font-display: swap;
+  }
+  @property --g1 { syntax: "<color>"; inherits: true; initial-value: #6D1FB0; }
+  @property --g2 { syntax: "<color>"; inherits: true; initial-value: #D81B60; }
+
+  :root {
+    --bg: #F4F2FB; --ink: #17122B; --muted: #5F5878;
+    --line: rgba(23, 18, 43, .16); --surface: rgba(255, 255, 255, .66); --panel: #FFFFFF;
+    --warn: #B3261E; --amb: .34; --brass: #E9C46A;
+    --display: "Unbounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: light;
+    transition: --g1 .6s ease, --g2 .6s ease;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C0A17; --ink: #F3F0FF; --muted: #A8A1C2;
+      --line: rgba(255, 255, 255, .16); --surface: rgba(255, 255, 255, .07); --panel: #191530;
+      --warn: #FF9AA8; --amb: .42;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { background: var(--bg); }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink); overflow-x: hidden;
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  /* The whole page takes its colour from the card in focus */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; opacity: var(--amb);
+    background:
+      radial-gradient(95vmax circle at 5% -15%, var(--g1), transparent 70%),
+      radial-gradient(95vmax circle at 105% 30%, var(--g2), transparent 70%);
+  }
+
+  button, .btn {
+    font: inherit; font-weight: 600; cursor: pointer; color: var(--ink);
+    padding: 10px 18px; border-radius: 999px;
+    border: 1.5px solid var(--line); background: var(--surface);
+  }
+  button.primary {
+    border: none; padding: 11.5px 22px; color: #fff;
+    background: linear-gradient(110deg, var(--g1), var(--g2));
+    box-shadow: 0 10px 22px -10px var(--g1);
+  }
+  button.quiet { border-color: transparent; background: none; }
+  button.warn { color: var(--warn); }
+  button:disabled { opacity: .6; cursor: default; }
+  button:focus-visible, .btn:focus-within, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid var(--ink); outline-offset: 2px;
+  }
+  input[type=text], input[type=password], input[type=number], input[type=search], select {
+    display: block; width: 100%; padding: 11px 14px; font: inherit; color: var(--ink);
+    border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface);
+  }
+
+  /* ---------- Lock screen ---------- */
+  #lock {
+    min-height: 100vh; display: grid; place-content: center; justify-items: center;
+    gap: 20px; padding: 24px; text-align: center;
+  }
+  #lock .mini {
+    width: 150px; aspect-ratio: 85.6 / 54; border-radius: 12px; transform: rotate(-8deg);
+    background: linear-gradient(135deg, var(--g1), var(--g2));
+    box-shadow: 0 24px 40px -18px var(--g1); position: relative; margin-bottom: 8px;
+  }
+  #lock .mini::after {
+    content: ""; position: absolute; left: 16px; top: 34px; width: 26px; height: 19px; border-radius: 4px;
+    background: linear-gradient(135deg, #FFF0B8, var(--brass) 55%, #C99A2E);
+  }
+  #lock h1 { font: 800 clamp(2.2rem, 10vw, 3.5rem)/1 var(--display); letter-spacing: -0.04em; margin: 0; }
+  #pinForm { width: min(320px, 100%); display: grid; gap: 12px; }
+  #pinForm p { margin: 0; color: var(--muted); font-size: .95rem; }
+  #pinForm input { text-align: center; font-size: 1.3rem; letter-spacing: .3em; }
+  #pinError { color: var(--warn) !important; font-weight: 600; min-height: 1.5em; }
+
+  /* ---------- App ---------- */
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 0; }
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+  header .title { margin-right: auto; }
+  h1 { font: 800 clamp(2.2rem, 8vw, 4rem)/.95 var(--display); letter-spacing: -0.045em; margin: 0; }
+  #summary { margin: 10px 0 0; color: var(--muted); }
+  #summary strong { color: var(--ink); font-family: var(--display); font-weight: 600; }
+  .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 22px; }
+  .tools input[type=search] { flex: 1 1 200px; max-width: 320px; border-radius: 999px; padding: 10px 18px; }
+  .chips { display: flex; gap: 6px; }
+  .chips button { padding: 8px 16px; }
+  .chips button[aria-pressed=true] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  #showAll { margin-left: auto; }
+
+  /* ---------- Carousel ---------- */
+  .stage { position: relative; --cw: min(78vw, 400px); margin-top: 8px; }
+  #track {
+    position: relative; display: flex; gap: 18px; overflow-x: auto;
+    scroll-snap-type: x mandatory; scrollbar-width: none;
+    padding: 34px calc(50% - var(--cw) / 2) 40px;
+  }
+  #track::-webkit-scrollbar { display: none; }
+  .slide {
+    flex: none; width: var(--cw); scroll-snap-align: center; perspective: 1400px;
+    container-type: inline-size;
+    transform: scale(.9); opacity: .5; transition: transform .3s ease, opacity .3s ease;
+  }
+  .slide.active { transform: scale(1); opacity: 1; }
+  .railrow { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 20px; }
+  .nav { flex: none; width: 40px; height: 40px; padding: 0; font-size: 1.3rem; line-height: 1; }
+  @media (max-width: 720px) { .nav { display: none; } }
+
+  /* The card: real proportions (85.6 x 54 mm), flips to show the back */
+  .flip {
+    position: relative; aspect-ratio: 85.6 / 54; cursor: pointer; border-radius: 4.5cqw;
+    transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2, .7, .2, 1);
+    font-size: clamp(11px, 4cqw, 16px);
+  }
+  .flip.revealed { transform: rotateY(180deg); }
+  .slide.active .flip { box-shadow: 0 2.2em 3em -1.6em var(--g1); }
+  .face {
+    position: absolute; inset: 0; border-radius: 4.5cqw; overflow: hidden;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    padding: 1.15em 1.3em; color: #fff; display: flex; flex-direction: column;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    background: linear-gradient(135deg, var(--g1), var(--g2));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22);
+  }
+  .face::before { content: ""; position: absolute; inset: 0; pointer-events: none; }
+  .face > * { position: relative; }
+  .credit .front::before {
+    background:
+      linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .16) 45%, transparent 60%),
+      radial-gradient(circle at 85% 12%, rgba(255, 255, 255, .2) 0 30%, transparent 30.5%),
+      radial-gradient(circle at 102% 68%, rgba(255, 255, 255, .12) 0 38%, transparent 38.5%),
+      repeating-linear-gradient(135deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 10px);
+  }
+  .debit .front::before {
+    background:
+      linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .16) 45%, transparent 60%),
+      repeating-radial-gradient(circle at 0 100%, rgba(255, 255, 255, .1) 0 2px, transparent 2px 16px);
+  }
+  .back { transform: rotateY(180deg); }
+  .back::before { background: rgba(0, 0, 0, .28); }
+
+  .top { display: flex; justify-content: space-between; gap: .8em; align-items: center; }
+  .bank { font: 700 1.1em/1.2 var(--display); letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .type { font-size: .75em; font-weight: 600; padding: .2em .8em; border-radius: 999px; background: rgba(255, 255, 255, .22); flex: none; }
+  .chip {
+    width: 2.6em; height: 1.95em; border-radius: .42em; margin-top: auto;
+    background: linear-gradient(135deg, #FFF0B8, var(--brass) 55%, #C99A2E);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+  }
+  .num { font: 600 1.25em/1 var(--mono); letter-spacing: .06em; margin: .7em 0 auto; white-space: nowrap; }
+  .bottom { display: flex; justify-content: space-between; align-items: flex-end; gap: 1em; }
+  .who { min-width: 0; font-size: .82em; line-height: 1.35; }
+  .who span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .holder { font-weight: 600; letter-spacing: .04em; }
+  .exp { font-family: var(--mono); opacity: .9; }
+  .net { flex: none; text-align: right; font: italic 800 1.1em/1 var(--display); letter-spacing: -0.02em; }
+  .net small { margin-left: .5em; font: italic 500 .62em/1 var(--display); opacity: .9; }
+
+  .stripe { height: 19%; margin: .3em -1.3em 0; background: #0E0C14; flex: none; }
+  .sig {
+    display: flex; justify-content: space-between; align-items: center; width: 72%;
+    margin-top: .8em; padding: .35em .8em; border-radius: .3em;
+    background: rgba(255, 255, 255, .93); color: #17122B; text-shadow: none; font-size: .85em;
+  }
+  .sig b { font: italic 700 1.25em/1 var(--mono); letter-spacing: .1em; }
+  .back .num { margin: auto 0 .7em; }
+  .back .bottom { font-size: .82em; }
+  .back .bottom span:first-child { font-family: var(--mono); }
+  .back .bottom span:last-child { opacity: .8; }
+
+  .ghost {
+    aspect-ratio: 85.6 / 54; border-radius: 4.5cqw; border: 2px dashed var(--line);
+    display: grid; place-content: center; justify-items: center; gap: 12px;
+    padding: 20px; text-align: center; color: var(--muted);
+  }
+
+  /* ---------- Rail of small cards ---------- */
+  #rail { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 4px 2px 6px; min-width: 0; }
+  #rail::-webkit-scrollbar { display: none; }
+  #rail button { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 7px; font-size: .85rem; font-weight: 500; }
+  #rail button i { width: 30px; height: 19px; border-radius: 4px; background: linear-gradient(135deg, var(--g1), var(--g2)); }
+  #rail button[aria-current=true] { border-color: var(--ink); background: var(--panel); font-weight: 700; }
+
+  /* ---------- Details of the card in focus ---------- */
+  #detail { max-width: 860px; margin: 28px auto 0; padding: 0 20px; }
+  #detail h2 { font: 700 clamp(1.4rem, 5vw, 2rem)/1.1 var(--display); letter-spacing: -0.03em; margin: 0; }
+  #detail .kind { margin: 6px 0 0; color: var(--muted); }
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    margin: 22px 0 0; border-top: 1.5px solid var(--ink);
+  }
+  .facts div { padding: 16px 16px 16px 0; border-bottom: 1px solid var(--line); }
+  .facts dd { margin: 0; font: 600 1.35rem/1.2 var(--display); letter-spacing: -0.02em; }
+  .facts dt { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+  .facts .when { display: block; font: 500 .85rem/1.4 system-ui, sans-serif; letter-spacing: 0; color: var(--muted); }
+  .facts .when.soon { color: var(--warn); font-weight: 700; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+
+  footer { max-width: 860px; margin: 56px auto 0; padding: 22px 20px 48px; border-top: 1px solid var(--line); }
+  footer p { color: var(--muted); font-size: .9rem; max-width: 62ch; margin: 0 0 14px; }
+  footer .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+
+  /* ---------- Dialogs and messages ---------- */
+  dialog {
+    border: none; border-radius: 24px; padding: 26px; width: min(460px, calc(100vw - 24px));
+    background: var(--panel); color: var(--ink); box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .5);
+  }
+  dialog::backdrop { background: rgba(12, 8, 30, .62); backdrop-filter: blur(4px); }
+  dialog h2 { font: 800 1.4rem/1.2 var(--display); letter-spacing: -0.03em; margin: 0 0 18px; }
+  dialog p { color: var(--muted); margin: 0 0 14px; }
+  form label { display: block; font-size: .88rem; font-weight: 600; margin-bottom: 14px; }
+  form label input, form label select { margin-top: 4px; background: var(--bg); }
+  form input[type=radio] { accent-color: var(--g2); }
+  .types { display: flex; gap: 20px; margin-bottom: 14px; }
+  .types label { font-weight: 400; margin: 0; font-size: 1rem; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .three { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 12px; }
+  .lbl { font-size: .88rem; font-weight: 600; color: var(--ink); margin: 0; }
+  .swatches { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin: 8px 0 18px; }
+  .swatches button {
+    aspect-ratio: 85.6 / 54; padding: 0; border: none; border-radius: 5px;
+    background: linear-gradient(135deg, var(--g1), var(--g2));
+  }
+  .swatches button.auto {
+    grid-column: span 2; aspect-ratio: auto; font-size: .72rem; font-weight: 600;
+    background: var(--bg); border: 1.5px solid var(--line); color: var(--ink);
+  }
+  .swatches button[aria-pressed=true] { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); translate: -50% 0; z-index: 10;
+    display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 20px; border-radius: 999px;
+    background: var(--ink); color: var(--bg); font-weight: 600; max-width: calc(100vw - 24px);
+    box-shadow: 0 16px 30px -12px rgba(0, 0, 0, .5);
+  }
+  #toast button { background: var(--bg); color: var(--ink); border: none; padding: 6px 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root, .slide, .flip { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<section id="lock">
+  <div class="mini" aria-hidden="true"></div>
+  <h1>My cards</h1>
+  <form id="pinForm" autocomplete="off">
+    <p id="pinHelp"></p>
+    <input type="password" id="pin" inputmode="numeric" pattern="[0-9]{4,}" minlength="4" maxlength="12" required aria-label="PIN" placeholder="PIN">
+    <input type="password" id="pin2" inputmode="numeric" maxlength="12" aria-label="Repeat PIN" placeholder="Repeat PIN" hidden>
+    <p id="pinError" role="alert"></p>
+    <button class="primary" id="pinGo">Unlock</button>
+  </form>
+  <button id="erase" class="quiet warn" hidden>Forgot your PIN? Erase everything</button>
+</section>
+
+<main id="app" hidden>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>My cards</h1>
+        <p id="summary"></p>
+      </div>
+      <button id="lockBtn">Lock</button>
+      <button id="add" class="primary">Add card</button>
+    </header>
+    <div class="tools">
+      <input type="search" id="search" placeholder="Search bank, name or last 4 digits" aria-label="Search cards">
+      <div class="chips" id="chips">
+        <button data-f="all" aria-pressed="true">All</button>
+        <button data-f="credit" aria-pressed="false">Credit</button>
+        <button data-f="debit" aria-pressed="false">Debit</button>
+      </div>
+      <button id="showAll">Show all details</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div id="track" tabindex="0" aria-label="Your cards. Use the left and right arrow keys to move between them."></div>
+  </div>
+  <div class="railrow">
+    <button class="nav" id="prev" aria-label="Previous card">‹</button>
+    <div id="rail"></div>
+    <button class="nav" id="next" aria-label="Next card">›</button>
+  </div>
+  <section id="detail" aria-live="polite"></section>
+
+  <footer>
+    <p>Your cards are encrypted with your PIN and saved only in this browser, on this device. To move them to another device, back up to a file here and restore that file there.</p>
+    <div class="row">
+      <button id="export">Back up to file</button>
+      <label class="btn">Restore from file<input type="file" id="import" accept="application/json,.json"></label>
+    </div>
+  </footer>
+</main>
+
+<dialog id="dlg">
+  <form id="form" autocomplete="off">
+    <h2 id="formTitle">Add card</h2>
+    <div class="types">
+      <label><input type="radio" name="type" value="credit" checked> Credit card</label>
+      <label><input type="radio" name="type" value="debit"> Debit card</label>
+    </div>
+    <div class="two">
+      <label>Bank name
+        <input type="text" name="bank" required maxlength="40">
+      </label>
+      <label>Name on card
+        <input type="text" name="holder" required maxlength="40">
+      </label>
+    </div>
+    <div class="two">
+      <label>Card network
+        <select name="network" required>
+          <option value="">Choose a network</option>
+          <option>Visa</option>
+          <option>Mastercard</option>
+          <option>RuPay</option>
+          <option>American Express</option>
+        </select>
+      </label>
+      <label>Variant (optional)
+        <input type="text" name="variant" maxlength="20" placeholder="Platinum, Select…">
+      </label>
+    </div>
+    <label>Card number
+      <input type="text" name="number" required inputmode="numeric" placeholder="1234 5678 9012 3456" maxlength="23">
+    </label>
+    <div class="two">
+      <label>Expiry
+        <input type="text" name="expiry" required inputmode="numeric" pattern="(0[1-9]|1[0-2])/[0-9]{2}" placeholder="MM/YY" maxlength="5">
+      </label>
+      <label>CVV
+        <input type="text" name="cvv" required inputmode="numeric" pattern="[0-9]{3,4}" maxlength="4">
+      </label>
+    </div>
+    <div class="three" id="creditFields">
+      <label>Credit limit (₹)
+        <input type="number" name="limit" required min="0" step="1">
+      </label>
+      <label>Bill day
+        <input type="number" name="billDay" required min="1" max="31" step="1" placeholder="1–31">
+      </label>
+      <label>Due day
+        <input type="number" name="dueDay" required min="1" max="31" step="1" placeholder="1–31">
+      </label>
+    </div>
+    <p class="lbl" id="colourLbl">Card colour</p>
+    <div class="swatches" id="swatches" role="group" aria-labelledby="colourLbl"></div>
+    <div class="dlg-actions">
+      <button type="button" id="cancel">Cancel</button>
+      <button type="submit" class="primary" id="formGo">Save card</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="pinDlg">
+  <form id="pinDlgForm" autocomplete="off">
+    <h2>Open this backup</h2>
+    <p>Enter the PIN that was in use when this backup was made.</p>
+    <label>Backup PIN
+      <input type="password" id="backupPin" inputmode="numeric" required maxlength="12">
+    </label>
+    <div class="dlg-actions">
+      <button type="button" id="pinDlgCancel">Cancel</button>
+      <button type="submit" class="primary">Restore cards</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status" hidden></div>
+
+<script>
+  const VAULT = 'myCardsVault';      // encrypted cards
+  const OLD = 'myCards';             // plain cards from the earlier version
+  const PALETTE = {
+    credit: [['#6D1FB0', '#D81B60'], ['#B5124F', '#D2480F'], ['#3F2AA8', '#D81B78']],
+    debit:  [['#0D47A1', '#00838F'], ['#00695C', '#1E8449'], ['#2538B0', '#00796B']]
+  };
+  // 60 colours to choose from: 18 hues in 3 styles, plus 6 dark neutrals.
+  // Yellows and greens are made darker so the white text on the card stays readable.
+  const COLORS = (() => {
+    const list = [], dim = h => (h >= 40 && h <= 190) ? 8 : 0;
+    for (let row = 0; row < 3; row++) {
+      for (let i = 0; i < 18; i++) {
+        const h = i * 20, h2 = (h + [40, 330, 0][row]) % 360;
+        list.push([
+          `hsl(${h}, 70%, ${[30, 22, 16][row] - dim(h) / 2}%)`,
+          `hsl(${h2}, 72%, ${[42, 38, 32][row] - dim(h2)}%)`
+        ]);
+      }
+    }
+    list.push(['#101014', '#3C3C4A'], ['#1A1A1E', '#6B5A2E'], ['#0B1026', '#27356B'],
+              ['#2A0F14', '#6E2233'], ['#0E1F1A', '#2F5D4E'], ['#2B2B2B', '#6F6F7A']);
+    return list;
+  })();
+  const HIDE_AFTER = 30000;
+
+  const $ = id => document.getElementById(id);
+  const track = $('track'), rail = $('rail'), detail = $('detail'), dlg = $('dlg'), form = $('form');
+
+  let key = null, salt = null, cards = [];
+  let filter = 'all', query = '', activeId = null, editingId = null;
+  const revealed = new Set();
+  let hideTimer = null, toastTimer = null, pickedColor = null;
+
+  /* ---------- Encryption ---------- */
+  const te = new TextEncoder(), td = new TextDecoder();
+  const b64 = buf => { let s = ''; new Uint8Array(buf).forEach(b => s += String.fromCharCode(b)); return btoa(s); };
+  const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+  async function deriveKey(pin, saltBytes) {
+    const base = await crypto.subtle.importKey('raw', te.encode(pin), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: saltBytes, iterations: 300000, hash: 'SHA-256' },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function seal(k, saltBytes, data) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, te.encode(JSON.stringify(data)));
+    return { v: 1, salt: b64(saltBytes), iv: b64(iv), data: b64(ct) };
+  }
+  async function unseal(k, vault) {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(vault.iv) }, k, unb64(vault.data));
+    return JSON.parse(td.decode(pt));
+  }
+
+  function readVault() {
+    try { return JSON.parse(localStorage.getItem(VAULT)); } catch (e) { return null; }
+  }
+  async function save() {
+    try { localStorage.setItem(VAULT, JSON.stringify(await seal(key, salt, cards))); }
+    catch (e) { toast('Could not save. This browser is blocking storage for this page.'); }
+  }
+
+  /* ---------- Lock screen ---------- */
+  function showLock() {
+    key = null; cards = []; revealed.clear();
+    const hasVault = !!readVault();
+    $('app').hidden = true; $('lock').hidden = false;
+    $('pinForm').reset(); $('pinError').textContent = '';
+    $('pin2').hidden = hasVault; $('pin2').required = !hasVault;
+    $('erase').hidden = !hasVault; $('erase').textContent = 'Forgot your PIN? Erase everything';
+    $('pinGo').textContent = hasVault ? 'Unlock' : 'Create PIN';
+    $('pinHelp').textContent = hasVault
+      ? 'Enter your PIN to open your cards.'
+      : 'Choose a PIN of 4 or more digits (6 is safer). It encrypts your cards. A forgotten PIN cannot be recovered.';
+    if (!window.crypto || !crypto.subtle) {
+      $('pinGo').disabled = true;
+      $('pinError').textContent = 'This browser cannot encrypt on this page. Open the installed app or the https address instead.';
+    }
+    $('pin').focus();
+  }
+
+  $('pinForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const pin = $('pin').value, vault = readVault(), go = $('pinGo'), label = go.textContent;
+    $('pinError').textContent = '';
+    if (!vault && pin !== $('pin2').value) { $('pinError').textContent = 'The two PINs do not match.'; return; }
+    go.disabled = true; go.textContent = vault ? 'Unlocking…' : 'Creating…';
+    try {
+      if (vault) {
+        salt = unb64(vault.salt);
+        const k = await deriveKey(pin, salt);
+        cards = await unseal(k, vault);
+        key = k;
+      } else {
+        salt = crypto.getRandomValues(new Uint8Array(16));
+        key = await deriveKey(pin, salt);
+        try { cards = JSON.parse(localStorage.getItem(OLD)) || []; } catch (err) { cards = []; }
+        await save();
+        localStorage.removeItem(OLD);
+      }
+      $('lock').hidden = true; $('app').hidden = false;
+      activeId = cards[0] ? cards[0].id : null;
+      render();
+    } catch (err) {
+      key = null; cards = [];
+      $('pinError').textContent = 'Wrong PIN. Try again.';
+      $('pin').select();
+    }
+    go.disabled = false; go.textContent = label;
+  });
+
+  let eraseArmed = false;
+  $('erase').addEventListener('click', () => {
+    if (!eraseArmed) {
+      eraseArmed = true;
+      $('erase').textContent = 'Tap again to erase all cards on this device';
+      setTimeout(() => { eraseArmed = false; $('erase').textContent = 'Forgot your PIN? Erase everything'; }, 4000);
+      return;
+    }
+    eraseArmed = false;
+    localStorage.removeItem(VAULT);
+    showLock();
+  });
+  $('lockBtn').addEventListener('click', showLock);
+
+  /* ---------- Helpers ---------- */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  const typeOf = c => c.type === 'credit' ? 'credit' : 'debit';
+  const last4 = c => String(c.number).slice(-4);
+  const grouped = n => String(n).replace(/(.{4})/g, '$1 ').trim();
+  const rupees = n => '₹' + Number(n || 0).toLocaleString('en-IN');
+
+  function ordinal(n) {
+    const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+  function colorsOf(card) {
+    if (Number.isInteger(card.color) && COLORS[card.color]) return COLORS[card.color];
+    const t = typeOf(card);
+    const i = cards.filter(c => typeOf(c) === t).indexOf(card);
+    return PALETTE[t][Math.max(i, 0) % 3];
+  }
+  function daysUntil(day) {
+    const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const on = (y, m) => new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()));
+    let d = on(today.getFullYear(), today.getMonth());
+    if (d < today) d = on(today.getFullYear(), today.getMonth() + 1);
+    return Math.round((d - today) / 864e5);
+  }
+  function whenDay(day) {
+    const n = daysUntil(day);
+    const text = n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
+    return `<span class="when${n <= 3 ? ' soon' : ''}">${text}</span>`;
+  }
+  function whenExpiry(expiry) {
+    const m = /^(\d{2})\/(\d{2})$/.exec(expiry || '');
+    if (!m) return '';
+    const now = new Date();
+    const months = (2000 + Number(m[2])) * 12 + (Number(m[1]) - 1) - (now.getFullYear() * 12 + now.getMonth());
+    const text = months < 0 ? 'expired' : months === 0 ? 'this month' : months === 1 ? 'next month'
+      : months < 24 ? `in ${months} months` : `in ${Math.floor(months / 12)} years`;
+    return `<span class="when${months <= 2 ? ' soon' : ''}">${text}</span>`;
+  }
+  function luhnOk(digits) {
+    let sum = 0, alt = false;
+    for (let i = digits.length - 1; i >= 0; i--) {
+      let d = Number(digits[i]);
+      if (alt) { d *= 2; if (d > 9) d -= 9; }
+      sum += d; alt = !alt;
+    }
+    return digits.length >= 12 && digits.length <= 19 && sum % 10 === 0;
+  }
+  function visible() {
+    const q = query.trim().toLowerCase();
+    return cards.filter(c => {
+      if (filter !== 'all' && typeOf(c) !== filter) return false;
+      if (!q) return true;
+      return [c.bank, c.holder, c.network, c.variant, last4(c)].some(v => String(v || '').toLowerCase().includes(q));
+    });
+  }
+
+  function toast(message, actionLabel, action) {
+    const t = $('toast');
+    t.textContent = message;
+    if (action) {
+      const b = document.createElement('button');
+      b.textContent = actionLabel;
+      b.addEventListener('click', () => { t.hidden = true; action(); });
+      t.appendChild(b);
+    }
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, action ? 6000 : 2600);
+  }
+
+  /* ---------- Rendering ---------- */
+  function cardHTML(c) {
+    const t = typeOf(c), [g1, g2] = colorsOf(c);
+    return `
+      <div class="slide ${t}" data-id="${esc(c.id)}" style="--g1:${g1};--g2:${g2}">
+        <div class="flip${revealed.has(c.id) ? ' revealed' : ''}">
+          <div class="face front">
+            <div class="top">
+              <span class="bank">${esc(c.bank)}</span>
+              <span class="type">${t === 'credit' ? 'Credit' : 'Debit'}</span>
+            </div>
+            <div class="chip"></div>
+            <div class="num">•••• •••• •••• ${esc(last4(c))}</div>
+            <div class="bottom">
+              <div class="who">
+                <span class="holder">${esc(c.holder)}</span>
+                <span class="exp">Expires ${esc(c.expiry)}</span>
+              </div>
+              <div class="net">${esc(c.network)}<small>${esc(c.variant)}</small></div>
+            </div>
+          </div>
+          <div class="face back">
+            <div class="stripe"></div>
+            <div class="sig"><span>CVV</span><b>${esc(c.cvv)}</b></div>
+            <div class="num">${esc(grouped(c.number))}</div>
+            <div class="bottom"><span>Expires ${esc(c.expiry)}</span><span>Tap to hide</span></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function render() {
+    const credit = cards.filter(c => typeOf(c) === 'credit');
+    const total = credit.reduce((s, c) => s + Number(c.limit || 0), 0);
+    $('summary').innerHTML = cards.length
+      ? `${cards.length} card${cards.length === 1 ? '' : 's'}` + (credit.length ? `, <strong>${rupees(total)}</strong> total credit limit` : '')
+      : 'Nothing saved yet.';
+
+    const vis = visible();
+    if (!vis.some(c => c.id === activeId)) activeId = vis[0] ? vis[0].id : null;
+
+    if (vis.length) {
+      track.innerHTML = vis.map(cardHTML).join('');
+    } else if (cards.length) {
+      track.innerHTML = `<div class="slide active"><div class="ghost"><span>No cards match your search.</span><button data-act="clear">Clear search</button></div></div>`;
+    } else {
+      track.innerHTML = `<div class="slide active"><div class="ghost"><span>No cards yet.</span><button class="primary" data-act="add">Add your first card</button></div></div>`;
+    }
+    rail.innerHTML = vis.length > 1 ? vis.map(c => {
+      const [g1, g2] = colorsOf(c);
+      return `<button data-id="${esc(c.id)}" style="--g1:${g1};--g2:${g2}"><i></i>${esc(c.bank)} ${esc(last4(c))}</button>`;
+    }).join('') : '';
+    $('prev').hidden = $('next').hidden = vis.length < 2;
+    $('showAll').hidden = !vis.length;
+
+    const slide = slideOf(activeId);
+    if (slide) track.scrollLeft = slide.offsetLeft - (track.clientWidth - slide.offsetWidth) / 2;
+    paintActive();
+  }
+
+  function slideOf(id) {
+    return [...track.children].find(s => s.dataset.id === id);
+  }
+
+  function paintActive() {
+    [...track.children].forEach(s => { if (s.dataset.id) s.classList.toggle('active', s.dataset.id === activeId); });
+    [...rail.children].forEach(b => b.setAttribute('aria-current', b.dataset.id === activeId));
+    const c = cards.find(x => x.id === activeId);
+    const [g1, g2] = c ? colorsOf(c) : PALETTE.credit[0];
+    document.documentElement.style.setProperty('--g1', g1);
+    document.documentElement.style.setProperty('--g2', g2);
+    updateShowAll();
+    if (!c) { detail.innerHTML = ''; return; }
+
+    const t = typeOf(c);
+    const kind = [c.network, c.variant, t === 'credit' ? 'credit card' : 'debit card'].filter(Boolean).join(' ');
+    let facts = '';
+    if (t === 'credit') {
+      facts += `<div><dd>${rupees(c.limit)}</dd><dt>Credit limit</dt></div>`;
+      if (c.billDay) facts += `<div><dd>${ordinal(Number(c.billDay))} ${whenDay(Number(c.billDay))}</dd><dt>Bill generated</dt></div>`;
+      if (c.dueDay) facts += `<div><dd>${ordinal(Number(c.dueDay))} ${whenDay(Number(c.dueDay))}</dd><dt>Payment due</dt></div>`;
+    }
+    facts += `<div><dd>${esc(c.expiry)} ${whenExpiry(c.expiry)}</dd><dt>Card expires</dt></div>`;
+
+    detail.innerHTML = `
+      <h2>${esc(c.bank)}</h2>
+      <p class="kind">${esc(kind)} ending ${esc(last4(c))}</p>
+      <dl class="facts">${facts}</dl>
+      <div class="actions">
+        <button class="primary" data-act="copy">Copy card number</button>
+        <button data-act="reveal">${revealed.has(c.id) ? 'Hide details' : 'Show details'}</button>
+        <button data-act="edit">Edit</button>
+        <button class="warn" data-act="delete">Delete</button>
+      </div>`;
+  }
+
+  /* ---------- Showing and hiding details ---------- */
+  function armHideTimer() {
+    clearTimeout(hideTimer);
+    if (revealed.size) hideTimer = setTimeout(hideAll, HIDE_AFTER);
+  }
+  function setRevealed(id, on) {
+    on ? revealed.add(id) : revealed.delete(id);
+    const s = slideOf(id);
+    if (s) s.firstElementChild.classList.toggle('revealed', on);
+  }
+  function updateShowAll() {
+    const vis = visible();
+    $('showAll').textContent = vis.length && vis.every(c => revealed.has(c.id)) ? 'Hide all details' : 'Show all details';
+    const btn = detail.querySelector('[data-act=reveal]');
+    if (btn) btn.textContent = revealed.has(activeId) ? 'Hide details' : 'Show details';
+  }
+  function toggleReveal(id) {
+    setRevealed(id, !revealed.has(id));
+    updateShowAll(); armHideTimer();
+  }
+  function hideAll() {
+    [...revealed].forEach(id => setRevealed(id, false));
+    updateShowAll(); clearTimeout(hideTimer);
+  }
+  $('showAll').addEventListener('click', () => {
+    const vis = visible(), allOn = vis.every(c => revealed.has(c.id));
+    vis.forEach(c => setRevealed(c.id, !allOn));
+    updateShowAll(); armHideTimer();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hideAll(); });
+
+  /* ---------- Carousel ---------- */
+  function goTo(id) {
+    const s = slideOf(id);
+    if (s) track.scrollTo({ left: s.offsetLeft - (track.clientWidth - s.offsetWidth) / 2, behavior: 'smooth' });
+  }
+  function step(by) {
+    const vis = visible(), i = vis.findIndex(c => c.id === activeId), next = vis[i + by];
+    if (next) goTo(next.id);
+  }
+  let ticking = false;
+  track.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      const mid = track.scrollLeft + track.clientWidth / 2;
+      let best = null, bestGap = Infinity;
+      [...track.children].forEach(s => {
+        const gap = Math.abs(s.offsetLeft + s.offsetWidth / 2 - mid);
+        if (s.dataset.id && gap < bestGap) { best = s; bestGap = gap; }
+      });
+      if (best && best.dataset.id !== activeId) { activeId = best.dataset.id; paintActive(); }
+    });
+  });
+  track.addEventListener('click', e => {
+    const act = e.target.dataset.act;
+    if (act === 'add') return openForm();
+    if (act === 'clear') return clearFilters();
+    const s = e.target.closest('.slide[data-id]');
+    if (!s) return;
+    if (s.dataset.id !== activeId) goTo(s.dataset.id); else toggleReveal(activeId);
+  });
+  track.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+    if ((e.key === 'Enter' || e.key === ' ') && activeId) { e.preventDefault(); toggleReveal(activeId); }
+  });
+  $('prev').addEventListener('click', () => step(-1));
+  $('next').addEventListener('click', () => step(1));
+  rail.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) goTo(b.dataset.id);
+  });
+  window.addEventListener('resize', () => {
+    const s = slideOf(activeId);
+    if (s) track.scrollLeft = s.offsetLeft - (track.clientWidth - s.offsetWidth) / 2;
+  });
+
+  /* ---------- Search and filter ---------- */
+  function clearFilters() {
+    filter = 'all'; query = ''; $('search').value = '';
+    [...$('chips').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.f === 'all'));
+    render();
+  }
+  $('search').addEventListener('input', e => { query = e.target.value; render(); });
+  $('chips').addEventListener('click', e => {
+    const f = e.target.dataset.f;
+    if (!f) return;
+    filter = f;
+    [...$('chips').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.f === f));
+    render();
+  });
+
+  /* ---------- Card actions ---------- */
+  async function copyNumber(c) {
+    const text = String(c.number);
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    toast('Card number copied');
+  }
+  detail.addEventListener('click', e => {
+    const act = e.target.dataset.act, c = cards.find(x => x.id === activeId);
+    if (!act || !c) return;
+    if (act === 'copy') copyNumber(c);
+    if (act === 'reveal') toggleReveal(c.id);
+    if (act === 'edit') openForm(c);
+    if (act === 'delete') {
+      const at = cards.indexOf(c);
+      cards.splice(at, 1); revealed.delete(c.id);
+      save(); render();
+      toast(`${c.bank} card ending ${last4(c)} deleted`, 'Undo', () => {
+        cards.splice(at, 0, c); activeId = c.id; save(); render();
+      });
+    }
+  });
+
+  /* ---------- Add and edit form ---------- */
+  function syncCreditFields() {
+    const isCredit = form.type.value === 'credit';
+    $('creditFields').hidden = !isCredit;
+    form.limit.disabled = form.billDay.disabled = form.dueDay.disabled = !isCredit;
+  }
+  function setPicked(value) {
+    pickedColor = value;
+    [...$('swatches').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.c === (value == null ? '' : String(value))));
+  }
+  $('swatches').innerHTML = `<button type="button" class="auto" data-c="">Automatic</button>` +
+    COLORS.map((c, i) => `<button type="button" data-c="${i}" aria-label="Colour ${i + 1}" style="--g1:${c[0]};--g2:${c[1]}"></button>`).join('');
+  $('swatches').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) setPicked(b.dataset.c === '' ? null : Number(b.dataset.c));
+  });
+
+  function openForm(c) {
+    form.reset();
+    setPicked(c && Number.isInteger(c.color) ? c.color : null);
+    editingId = c ? c.id : null;
+    $('formTitle').textContent = c ? 'Edit card' : 'Add card';
+    $('formGo').textContent = c ? 'Save changes' : 'Save card';
+    if (c) {
+      form.type.value = typeOf(c);
+      form.bank.value = c.bank || ''; form.holder.value = c.holder || '';
+      form.network.value = c.network || ''; form.variant.value = c.variant || '';
+      form.number.value = grouped(c.number); form.expiry.value = c.expiry || ''; form.cvv.value = c.cvv || '';
+      form.limit.value = c.limit == null ? '' : c.limit;
+      form.billDay.value = c.billDay || ''; form.dueDay.value = c.dueDay || '';
+    }
+    form.number.setCustomValidity('');
+    syncCreditFields();
+    dlg.showModal();
+  }
+  $('add').addEventListener('click', () => openForm());
+  $('cancel').addEventListener('click', () => dlg.close());
+  form.addEventListener('change', syncCreditFields);
+
+  form.number.addEventListener('input', () => {
+    const digits = form.number.value.replace(/\D/g, '').slice(0, 19);
+    form.number.value = grouped(digits);
+    form.number.setCustomValidity(luhnOk(digits) ? '' : 'Check the card number. One or more digits look wrong.');
+  });
+  form.expiry.addEventListener('input', e => {
+    let d = form.expiry.value.replace(/\D/g, '').slice(0, 4);
+    if (d.length > 2 || (d.length === 2 && e.inputType !== 'deleteContentBackward')) d = d.slice(0, 2) + '/' + d.slice(2);
+    form.expiry.value = d;
+  });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const digits = form.number.value.replace(/\D/g, '');
+    if (!luhnOk(digits)) {
+      form.number.setCustomValidity('Check the card number. One or more digits look wrong.');
+      form.number.reportValidity();
+      return;
+    }
+    const card = {
+      id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      type: form.type.value,
+      bank: form.bank.value.trim(),
+      holder: form.holder.value.trim(),
+      network: form.network.value,
+      variant: form.variant.value.trim(),
+      number: digits,
+      expiry: form.expiry.value,
+      cvv: form.cvv.value
+    };
+    if (pickedColor != null) card.color = pickedColor;
+    if (card.type === 'credit') {
+      card.limit = Number(form.limit.value);
+      card.billDay = Number(form.billDay.value);
+      card.dueDay = Number(form.dueDay.value);
+    }
+    const at = cards.findIndex(c => c.id === editingId);
+    if (at >= 0) cards[at] = card; else cards.push(card);
+    activeId = card.id;
+    dlg.close();
+    save();
+    if (!visible().some(c => c.id === card.id)) clearFilters(); else render();
+    toast(at >= 0 ? 'Changes saved' : 'Card saved');
+  });
+
+  /* ---------- Back up and restore ---------- */
+  $('export').addEventListener('click', () => {
+    const blob = new Blob([localStorage.getItem(VAULT) || ''], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'my-cards-backup.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('Backup saved. It opens only with your PIN.');
+  });
+
+  function mergeCards(incoming) {
+    if (!Array.isArray(incoming)) throw new Error('not cards');
+    const have = new Set(cards.map(c => c.id));
+    const fresh = incoming.filter(c => c && c.id && c.number && !have.has(c.id));
+    cards = cards.concat(fresh);
+    save(); render();
+    toast(`Restored ${fresh.length} card${fresh.length === 1 ? '' : 's'}`);
+  }
+  function askBackupPin() {
+    return new Promise(resolve => {
+      const d = $('pinDlg'), f = $('pinDlgForm');
+      f.reset();
+      const done = value => { f.onsubmit = null; $('pinDlgCancel').onclick = null; d.onclose = null; d.close(); resolve(value); };
+      f.onsubmit = e => { e.preventDefault(); done($('backupPin').value); };
+      $('pinDlgCancel').onclick = () => done(null);
+      d.onclose = () => resolve(null);
+      d.showModal();
+    });
+  }
+  $('import').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    let parsed;
+    try { parsed = JSON.parse(await file.text()); }
+    catch (err) { return toast('That file is not a card backup.'); }
+    if (Array.isArray(parsed)) return mergeCards(parsed);          // backup from the earlier, unencrypted version
+    if (!parsed || !parsed.salt || !parsed.iv || !parsed.data) return toast('That file is not a card backup.');
+    const pin = await askBackupPin();
+    if (pin == null) return;
+    try {
+      const k = await deriveKey(pin, unb64(parsed.salt));
+      mergeCards(await unseal(k, parsed));
+    } catch (err) {
+      toast('Wrong PIN for this backup.');
+    }
+  });
+
+  /* ---------- Start ---------- */
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  showLock();
+</script>
+</body>
+</html>
