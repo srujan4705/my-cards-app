@@ -1,6 +1,6 @@
 // Keeps a copy of the app on the device so it opens without internet.
 // Card data is never handled here; it lives only in the browser's local storage.
-const CACHE = 'my-cards-v1';
+const CACHE = 'my-cards-v3';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './unbounded.woff2'];
 
 self.addEventListener('install', e => {
